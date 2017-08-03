@@ -1,3 +1,7 @@
+# Generated files
+moc_*
+Makefile
+
 # Prerequisites
 *.d
 
@@ -30,3 +34,8 @@
 *.exe
 *.out
 *.app
+jpgmagick*
+
+# Others
+.*
+
