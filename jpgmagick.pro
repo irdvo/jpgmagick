@@ -5,10 +5,12 @@ CONFIG  += qt
 equals(QT_MAJOR_VERSION,5) {
   QT      += widgets
 }
-SOURCES  += main.cpp \
-            MainWindow.cpp
+SOURCES  += main.cpp\
+            MainWindow.cpp\
+            ContrastBrightnessTab.cpp
             
-HEADERS  += MainWindow.h
+HEADERS  += MainWindow.h\
+            ContrastBrightnessTab.h
 
 #RESOURCES = jpgmagick.qrc
 TARGET    = jpgmagick

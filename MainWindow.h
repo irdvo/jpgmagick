@@ -1,5 +1,5 @@
-#ifndef _MAINWINDOW_H
-#define _MAINWINDOW_H
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
 
 #include <QMainWindow>
 #include <QImage>
@@ -8,7 +8,6 @@
 class QAction;
 class QListWidget;
 class QMenu;
-class QTextEdit;
 class QLabel;
 class QScrollArea;
 class QFileDialog;
@@ -18,8 +17,9 @@ class QListView;
 class QFileSystemModel;
 class QDockWidget;
 class QPushButton;
-class QLineEdit;
-class QPlainTextEdit;
+class QTabWidget;
+
+class ContrastBrightnessTab;
 
 class MainWindow : public QMainWindow
 {
@@ -46,6 +46,7 @@ private slots:
   void rootPathChanged(const QString &);
   void selectPrevImage();
   void selectNextImage();
+  void doConvert();
 
 private:
   void createCentralWidget();
@@ -105,6 +106,11 @@ private:
   QString           _imagePath;
   QImage            _image;
   double            _scaleFactor;
+
+  // Tab
+  QTabWidget       *_actionTab;
+
+  ContrastBrightnessTab *_contrastBrightnessTab;
 };
 
 #endif

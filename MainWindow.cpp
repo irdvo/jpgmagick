@@ -7,13 +7,15 @@
 
 #include "MainWindow.h"
 
+#include "ContrastBrightnessTab.h"
+
 MainWindow::MainWindow(int argc, char *argv[]) :
   _imageFilename(""),
   _imagePath(QDir::currentPath()),
   _scaleFactor(1.0)
 {
   QCoreApplication::setOrganizationName("jpgmagick");
-  QCoreApplication::setApplicationName("jpgmagick");
+  QCoreApplication::setApplicationName ("jpgmagick");
 
   if (argc > 1)
   {
@@ -57,7 +59,19 @@ void MainWindow::createCentralWidget()
       _imageScrollArea->setVisible(true);
       _imageScrollArea->setAlignment(Qt::AlignCenter);
 
-    vbox->addWidget(_imageScrollArea);
+    vbox->addWidget(_imageScrollArea, 1);
+
+    _actionTab = new QTabWidget;
+
+      _contrastBrightnessTab = new ContrastBrightnessTab();
+#if QT_VERSION >= 0x050000
+        connect(_contrastBrightnessTab, &ContrastBrightnessTab::doConvert, this, &MainWindow::doConvert);
+#else
+        convert(_contrastBrightnessTab, SIGNAL(doConvert()), this, SLOT(doConvert()));
+#endif
+      _actionTab->addTab(_contrastBrightnessTab, tr("Contrast && Brightness"));
+
+    vbox->addWidget(_actionTab);
 
   QWidget *widget = new QWidget(this);
   widget->setLayout(vbox);
@@ -72,59 +86,107 @@ void MainWindow::createActions()
   QIcon openDirectoryIcon = style->standardIcon(QStyle::SP_DirOpenIcon);
   _openDirectoryAction = new QAction(openDirectoryIcon, tr("&Open Directory..."), this);
   _openDirectoryAction->setStatusTip(tr("Open a directory with image files"));
+#if QT_VERSION >= 0x050000
+  connect(_openDirectoryAction, &QAction::triggered, this, &MainWindow::openDirectory);
+#else
   connect(_openDirectoryAction, SIGNAL(triggered()), this, SLOT(openDirectory()));
+#endif
 
   QIcon parentDirectoryIcon = style->standardIcon(QStyle::SP_FileDialogToParent);
   _parentDirectoryAction = new QAction(parentDirectoryIcon, tr("&Goto Parent Directory"), this);
   _parentDirectoryAction->setStatusTip(tr("Goto the parent directory"));
+#if QT_VERSION >= 0x050000
+  connect(_parentDirectoryAction, &QAction::triggered, this, &MainWindow::parentDirectory);
+#else
   connect(_parentDirectoryAction, SIGNAL(triggered()), this, SLOT(parentDirectory()));
+#endif
 
   _quitAction = new QAction(tr("&Quit"), this);
   _quitAction->setShortcuts(QKeySequence::Quit);
   _quitAction->setStatusTip(tr("Quit the application"));
+#if QT_VERSION >= 0x050000
+  connect(_quitAction, &QAction::triggered, this, &MainWindow::close);
+#else
   connect(_quitAction, SIGNAL(triggered()), this, SLOT(close()));
+#endif
 
   _zoomInAction = new QAction(tr("Zoom &In (25%)"), this);
   _zoomInAction->setShortcut(QKeySequence::ZoomIn);
   _zoomInAction->setEnabled(false);
+#if QT_VERSION >= 0x050000
+  connect(_zoomInAction, &QAction::triggered, this, &MainWindow::zoomIn);
+#else
   connect(_zoomInAction, SIGNAL(triggered()), this, SLOT(zoomIn()));
+#endif
 
   _zoomOutAction = new QAction(tr("Zoom &Out (25%)"), this);
   _zoomOutAction->setShortcut(QKeySequence::ZoomOut);
   _zoomOutAction->setEnabled(false);
+#if QT_VERSION >= 0x050000
+  connect(_zoomOutAction, &QAction::triggered, this, &MainWindow::zoomOut);
+#else
   connect(_zoomOutAction, SIGNAL(triggered()), this, SLOT(zoomOut()));
+#endif
 
   _setNormalSizeAction = new QAction(tr("&Normal Size"), this);
   _setNormalSizeAction->setShortcut(tr("Ctrl+S"));
   _setNormalSizeAction->setEnabled(false);
+#if QT_VERSION >= 0x050000
+  connect(_setNormalSizeAction, &QAction::triggered, this, &MainWindow::setNormalSize);
+#else
   connect(_setNormalSizeAction, SIGNAL(triggered()), this, SLOT(setNormalSize()));
+#endif
 
   _setFullSizeAction = new QAction(tr("&Full Size"), this);
   _setFullSizeAction->setShortcut(tr("Ctrl+F"));
   _setFullSizeAction->setEnabled(false);
+#if QT_VERSION >= 0x050000
+  connect(_setFullSizeAction, &QAction::triggered, this, &MainWindow::setFullSize);
+#else
   connect(_setFullSizeAction, SIGNAL(triggered()), this, SLOT(setFullSize()));
+#endif
 
   _fitToWindowAction = new QAction(tr("&Fit to Window"), this);
   _fitToWindowAction->setCheckable(true);
   _fitToWindowAction->setShortcut(tr("Ctrl+W"));
   _fitToWindowAction->setEnabled(false);
+#if QT_VERSION >= 0x050000
+  connect(_fitToWindowAction, &QAction::triggered, this, &MainWindow::fitToWindow);
+#else
   connect(_fitToWindowAction, SIGNAL(triggered()), this, SLOT(fitToWindow()));
+#endif
 
   QIcon prevImageIcon = style->standardIcon(QStyle::SP_ArrowBack);
   _prevImageAction = new QAction(prevImageIcon, tr("Show prevous image"), this);
+#if QT_VERSION >= 0x050000
+  connect(_prevImageAction, &QAction::triggered, this, &MainWindow::selectPrevImage);
+#else
   connect(_prevImageAction, SIGNAL(triggered()), this, SLOT(selectPrevImage()));
+#endif
 
   QIcon nextImageIcon = style->standardIcon(QStyle::SP_ArrowForward);
   _nextImageAction = new QAction(nextImageIcon, tr("Show next image"), this);
+#if QT_VERSION >= 0x050000
+  connect(_nextImageAction, &QAction::triggered, this, &MainWindow::selectNextImage);
+#else
   connect(_nextImageAction, SIGNAL(triggered()), this, SLOT(selectNextImage()));
+#endif
 
   _aboutAction = new QAction(tr("&About"), this);
   _aboutAction->setStatusTip(tr("Show the application's About box"));
+#if QT_VERSION >= 0x050000
+  connect(_aboutAction, &QAction::triggered, this, &MainWindow::about);
+#else
   connect(_aboutAction, SIGNAL(triggered()), this, SLOT(about()));
+#endif
 
   _aboutQtAction = new QAction(tr("About &Qt"), this);
   _aboutQtAction->setStatusTip(tr("Show the Qt library's About box"));
+#if QT_VERSION >= 0x050000
+  connect(_aboutQtAction, &QAction::triggered, this, &QApplication::aboutQt);
+#else
   connect(_aboutQtAction, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
+#endif
 }
 
 void MainWindow::createMenus()
@@ -175,13 +237,22 @@ void MainWindow::createDirectoryDock()
      _fileSystemModel->setNameFilters(fileSystemFilters);
      _fileSystemModel->setNameFilterDisables(false);
      _fileSystemModel->setRootPath(_imagePath);
+#if QT_VERSION >= 0x050000
+     connect(_fileSystemModel, &QFileSystemModel::directoryLoaded, this, &MainWindow::directoryLoaded);
+     connect(_fileSystemModel, &QFileSystemModel::rootPathChanged, this, &MainWindow::rootPathChanged);
+#else
      connect(_fileSystemModel, SIGNAL(directoryLoaded(const QString&)), this, SLOT(directoryLoaded(const QString&)));
      connect(_fileSystemModel, SIGNAL(rootPathChanged(const QString&)), this, SLOT(rootPathChanged(const QString&)));
+#endif
 
      _directoryView = new QListView(_directoryDock);
     _directoryView->setModel(_fileSystemModel);
     _directoryView->setRootIndex(_fileSystemModel->index(_imagePath));
+#if QT_VERSION >= 0x050000
+    connect(_directoryView, &QListView::clicked, this, &MainWindow::selectInDirectory);
+#else
     connect(_directoryView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(selectInDirectory(const QModelIndex&)));
+#endif
 
     _directoryDock->setWidget(_directoryView);
     addDockWidget(Qt::LeftDockWidgetArea, _directoryDock);;
@@ -470,6 +541,15 @@ void MainWindow::selectNextImage()
   {
     QMessageBox::warning(0, tr("Warning"), tr("No selected image"));
   }
+}
+
+void MainWindow::doConvert()
+{
+  int contrast;
+  int brightness;
+
+  //QMessageBox::warning(0, tr("Convert"), tr("Convert request"));
+  _contrastBrightnessTab->get(contrast, brightness);
 }
 
 void MainWindow::about()
