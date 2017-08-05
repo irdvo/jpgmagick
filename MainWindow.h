@@ -100,12 +100,15 @@ private:
   QFileSystemModel *_fileSystemModel;
 
   // Image
-  QLabel           *_imageLabel;
-  QScrollArea      *_imageScrollArea;
+  QLabel           *_image1Label;
+  QScrollArea      *_image1ScrollArea;
+  QLabel           *_image2Label;
+  QScrollArea      *_image2ScrollArea;
   QString           _imageFilename;
   QString           _imagePath;
   QImage            _image;
   double            _scaleFactor;
+
 
   // Tab
   QTabWidget       *_actionTab;

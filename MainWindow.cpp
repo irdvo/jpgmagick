@@ -47,19 +47,37 @@ void MainWindow::createCentralWidget()
 {
   QVBoxLayout *vbox = new QVBoxLayout;
 
-    _imageLabel = new QLabel;
-      _imageLabel->setBackgroundRole(QPalette::Base);
-      _imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
-      _imageLabel->setScaledContents(true);
-      _imageLabel->setAlignment(Qt::AlignCenter);
+    QHBoxLayout *hbox = new QHBoxLayout;
 
-    _imageScrollArea = new QScrollArea;
-      _imageScrollArea->setBackgroundRole(QPalette::Base);
-      _imageScrollArea->setWidget(_imageLabel);
-      _imageScrollArea->setVisible(true);
-      _imageScrollArea->setAlignment(Qt::AlignCenter);
+      _image1Label = new QLabel;
+        _image1Label->setBackgroundRole(QPalette::Base);
+        _image1Label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+        _image1Label->setScaledContents(true);
+        _image1Label->setAlignment(Qt::AlignCenter);
 
-    vbox->addWidget(_imageScrollArea, 1);
+      _image1ScrollArea = new QScrollArea;
+        _image1ScrollArea->setBackgroundRole(QPalette::Base);
+        _image1ScrollArea->setWidget(_image1Label);
+        _image1ScrollArea->setVisible(true);
+        _image1ScrollArea->setAlignment(Qt::AlignCenter);
+
+      hbox->addWidget(_image1ScrollArea);
+
+      _image2Label = new QLabel;
+        _image2Label->setBackgroundRole(QPalette::Base);
+        _image2Label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+        _image2Label->setScaledContents(true);
+        _image2Label->setAlignment(Qt::AlignCenter);
+
+      _image2ScrollArea = new QScrollArea;
+        _image2ScrollArea->setBackgroundRole(QPalette::Base);
+        _image2ScrollArea->setWidget(_image2Label);
+        _image2ScrollArea->setVisible(true);
+        _image2ScrollArea->setAlignment(Qt::AlignCenter);
+
+      hbox->addWidget(_image2ScrollArea);
+
+    vbox->addLayout(hbox, 1);
 
     _actionTab = new QTabWidget;
 
@@ -310,7 +328,7 @@ void MainWindow::setImage(const QImage &image)
 {
   _image = image;
 
-  _imageLabel->setPixmap(QPixmap::fromImage(_image));
+  _image1Label->setPixmap(QPixmap::fromImage(_image));
 
   _scaleFactor = 1.0;
 
@@ -328,10 +346,19 @@ void MainWindow::scaleImage(double factor)
 {
   _scaleFactor *= factor;
 
-  _imageLabel->resize(_scaleFactor * _imageLabel->pixmap()->size());
+  if (_image1Label->pixmap() != nullptr)
+  {
+    _image1Label->resize(_scaleFactor * _image1Label->pixmap()->size());
+  }
+  if (_image2Label->pixmap() != nullptr)
+  {
+    _image2Label->resize(_scaleFactor * _image2Label->pixmap()->size());
+  }
 
-  adjustScrollBar(_imageScrollArea->horizontalScrollBar(), factor);
-  adjustScrollBar(_imageScrollArea->verticalScrollBar(),   factor);
+  adjustScrollBar(_image1ScrollArea->horizontalScrollBar(), factor);
+  adjustScrollBar(_image1ScrollArea->verticalScrollBar(),   factor);
+  adjustScrollBar(_image2ScrollArea->horizontalScrollBar(), factor);
+  adjustScrollBar(_image2ScrollArea->verticalScrollBar(),   factor);
 
   _zoomInAction ->setEnabled(_scaleFactor < 2.0);
   _zoomOutAction->setEnabled(_scaleFactor > 0.1);
@@ -382,7 +409,7 @@ void MainWindow::parentDirectory()
 
     _imagePath = directory.absolutePath();
     _imageFilename = "";
-    _imageLabel->setPixmap(QPixmap());
+    _image1Label->setPixmap(QPixmap());
 
     _directoryDock->setWindowTitle(tr("Images: %1").arg(_imagePath));
 
@@ -407,8 +434,8 @@ void MainWindow::setNormalSize()
   _scaleFactor = 1.0;
 
   // Scale the image to fit on screen
-  double factor = qMin((double) _imageScrollArea->size().width()  / (double) _image.size().width(),
-                       (double) _imageScrollArea->size().height() / (double) _image.size().height());
+  double factor = qMin((double) _image1ScrollArea->size().width()  / (double) _image.size().width(),
+                       (double) _image1ScrollArea->size().height() / (double) _image.size().height());
 
   scaleImage(factor * 0.95);
 }
@@ -417,14 +444,16 @@ void MainWindow::setFullSize()
 {
   _scaleFactor = 1.0;
 
-  _imageLabel->adjustSize();
+  _image1Label->adjustSize();
+  _image2Label->adjustSize();
 }
 
 void MainWindow::fitToWindow()
 {
   bool fitToWindow = _fitToWindowAction->isChecked();
 
-  _imageScrollArea->setWidgetResizable(fitToWindow);
+  _image1ScrollArea->setWidgetResizable(fitToWindow);
+  _image2ScrollArea->setWidgetResizable(fitToWindow);
 
   if (!fitToWindow)
   {
@@ -471,7 +500,7 @@ void MainWindow::selectInDirectory(const QModelIndex &index)
     if (_fileSystemModel->fileInfo(index).isDir())
     {
       _imageFilename = "";
-      _imageLabel->setPixmap(QPixmap());
+      _image1Label->setPixmap(QPixmap());
 
       _directoryDock->setWindowTitle(filename);
 
