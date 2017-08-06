@@ -7,10 +7,12 @@ equals(QT_MAJOR_VERSION,5) {
 }
 SOURCES  += main.cpp\
             MainWindow.cpp\
-            ContrastBrightnessTab.cpp
+            ContrastBrightnessTab.cpp\
+            Magick.cpp
             
 HEADERS  += MainWindow.h\
-            ContrastBrightnessTab.h
+            ContrastBrightnessTab.h\
+            Magick.h
 
 #RESOURCES = jpgmagick.qrc
 TARGET    = jpgmagick

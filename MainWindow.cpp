@@ -6,7 +6,6 @@
 #endif
 
 #include "MainWindow.h"
-
 #include "ContrastBrightnessTab.h"
 
 MainWindow::MainWindow(int argc, char *argv[]) :
@@ -24,6 +23,14 @@ MainWindow::MainWindow(int argc, char *argv[]) :
       _imagePath = argv[1];
     }
   }
+
+  _tempFilename = QString("%1/jpgmagick.jpg").arg(QDir::tempPath());
+
+#if QT_VERSION >= 0x050000
+  connect(&_magick, &Magick::converted, this, &MainWindow::converted);
+#else
+  connect(&_magick, SIGNAL(converted()), this, SLOT(converted()));
+#endif
 
   createCentralWidget();
   createActions();
@@ -54,6 +61,7 @@ void MainWindow::createCentralWidget()
         _image1Label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
         _image1Label->setScaledContents(true);
         _image1Label->setAlignment(Qt::AlignCenter);
+        _image1Label->setPixmap(QPixmap());
 
       _image1ScrollArea = new QScrollArea;
         _image1ScrollArea->setBackgroundRole(QPalette::Base);
@@ -68,6 +76,7 @@ void MainWindow::createCentralWidget()
         _image2Label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
         _image2Label->setScaledContents(true);
         _image2Label->setAlignment(Qt::AlignCenter);
+        _image2Label->setPixmap(QPixmap());
 
       _image2ScrollArea = new QScrollArea;
         _image2ScrollArea->setBackgroundRole(QPalette::Base);
@@ -85,7 +94,7 @@ void MainWindow::createCentralWidget()
 #if QT_VERSION >= 0x050000
         connect(_contrastBrightnessTab, &ContrastBrightnessTab::doConvert, this, &MainWindow::doConvert);
 #else
-        convert(_contrastBrightnessTab, SIGNAL(doConvert()), this, SLOT(doConvert()));
+        connect(_contrastBrightnessTab, SIGNAL(doConvert()), this, SLOT(doConvert()));
 #endif
       _actionTab->addTab(_contrastBrightnessTab, tr("Contrast && Brightness"));
 
@@ -310,9 +319,10 @@ void MainWindow::openImage(const QString &filename)
 
   if (image.isNull())
   {
-    QMessageBox::information(this,
-                             tr("Error: unable to load image"),
-                             tr("Unable to load the image %1: %2").arg(QDir::toNativeSeparators(filename), reader.errorString()));
+    QMessageBox::information(
+          this,
+          tr("Error: unable to load image"),
+          tr("Unable to load the image %1: %2").arg(QDir::toNativeSeparators(filename), reader.errorString()));
   }
   else
   {
@@ -329,6 +339,7 @@ void MainWindow::setImage(const QImage &image)
   _image = image;
 
   _image1Label->setPixmap(QPixmap::fromImage(_image));
+  _image2Label->setPixmap(QPixmap());
 
   _scaleFactor = 1.0;
 
@@ -342,18 +353,11 @@ void MainWindow::setImage(const QImage &image)
   }
 }
 
-void MainWindow::scaleImage(double factor)
+void MainWindow::scaleImages(double factor)
 {
   _scaleFactor *= factor;
 
-  if (_image1Label->pixmap() != nullptr)
-  {
-    _image1Label->resize(_scaleFactor * _image1Label->pixmap()->size());
-  }
-  if (_image2Label->pixmap() != nullptr)
-  {
-    _image2Label->resize(_scaleFactor * _image2Label->pixmap()->size());
-  }
+  sizeImages();
 
   adjustScrollBar(_image1ScrollArea->horizontalScrollBar(), factor);
   adjustScrollBar(_image1ScrollArea->verticalScrollBar(),   factor);
@@ -364,6 +368,12 @@ void MainWindow::scaleImage(double factor)
   _zoomOutAction->setEnabled(_scaleFactor > 0.1);
 
   setTitle();
+}
+
+void MainWindow::sizeImages()
+{
+  _image1Label->resize(_scaleFactor * _image1Label->pixmap()->size());
+  _image2Label->resize(_scaleFactor * _image2Label->pixmap()->size());
 }
 
 void MainWindow::adjustScrollBar(QScrollBar *scrollBar, double factor)
@@ -387,9 +397,9 @@ void MainWindow::openDirectory()
 
     _imagePath = directoryDialog.selectedFiles().first();
 
-    _directoryDock->setWindowTitle(_imagePath);
+    //_directoryDock->setWindowTitle(_imagePath);
 
-    _fileSystemModel->setRootPath(_imagePath);
+    //_fileSystemModel->setRootPath(_imagePath);
 
     _directoryView->setRootIndex(_fileSystemModel->setRootPath(_imagePath));
   }
@@ -408,12 +418,13 @@ void MainWindow::parentDirectory()
     deselectDirectorySelections();
 
     _imagePath = directory.absolutePath();
+
     _imageFilename = "";
     _image1Label->setPixmap(QPixmap());
 
-    _directoryDock->setWindowTitle(tr("Images: %1").arg(_imagePath));
+    //_directoryDock->setWindowTitle(tr("Images: %1").arg(_imagePath));
 
-    _fileSystemModel->setRootPath(_imagePath);
+    // TODO _fileSystemModel->setRootPath(_imagePath);
 
     _directoryView->setRootIndex(_fileSystemModel->setRootPath(_imagePath));
   }
@@ -421,12 +432,12 @@ void MainWindow::parentDirectory()
 
 void MainWindow::zoomIn()
 {
-  scaleImage(1.25);
+  scaleImages(1.25);
 }
 
 void MainWindow::zoomOut()
 {
-  scaleImage(0.75);
+  scaleImages(0.75);
 }
 
 void MainWindow::setNormalSize()
@@ -437,7 +448,7 @@ void MainWindow::setNormalSize()
   double factor = qMin((double) _image1ScrollArea->size().width()  / (double) _image.size().width(),
                        (double) _image1ScrollArea->size().height() / (double) _image.size().height());
 
-  scaleImage(factor * 0.95);
+  scaleImages(factor * 0.95);
 }
 
 void MainWindow::setFullSize()
@@ -484,8 +495,9 @@ void MainWindow::directoryLoaded(const QString &)
   }
 }
 
-void MainWindow::rootPathChanged(const QString &)
+void MainWindow::rootPathChanged(const QString &path)
 {
+  _directoryDock->setWindowTitle(tr("Images: %1").arg(path));
 }
 
 
@@ -502,9 +514,9 @@ void MainWindow::selectInDirectory(const QModelIndex &index)
       _imageFilename = "";
       _image1Label->setPixmap(QPixmap());
 
-      _directoryDock->setWindowTitle(filename);
+      //_directoryDock->setWindowTitle(filename);
 
-      _fileSystemModel->setRootPath(filename);
+      //_fileSystemModel->setRootPath(filename);
 
       _directoryView->setRootIndex(_fileSystemModel->setRootPath(filename));
     }
@@ -577,14 +589,58 @@ void MainWindow::doConvert()
   int contrast;
   int brightness;
 
-  //QMessageBox::warning(0, tr("Convert"), tr("Convert request"));
   _contrastBrightnessTab->get(contrast, brightness);
+
+  if (contrast == 0 && brightness == 0)
+  {
+    _image2Label->setPixmap(QPixmap());
+  }
+  else
+  {
+    QStringList params;
+
+    params << "-brightness-contrast" << QString("%1x%2").arg(brightness).arg(contrast) << _imageFilename << _tempFilename;
+
+    _contrastBrightnessTab->setDisabled(true);
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
+    _magick.convert(params);
+  }
+}
+
+void MainWindow::converted()
+{
+  QImageReader reader(_tempFilename);
+
+#if QT_VERSION >= 0x050500
+  reader.setAutoTransform(true);
+#endif
+
+  const QImage image = reader.read();
+
+  if (image.isNull())
+  {
+    QMessageBox::information(
+          this,
+          tr("Error: unable to load image"),
+          tr("Unable to load the converted image: %2").arg(reader.errorString()));
+  }
+  else
+  {
+    _image2Label->setPixmap(QPixmap::fromImage(image));
+
+    sizeImages();
+  }
+
+  QApplication::restoreOverrideCursor();
+
+  _contrastBrightnessTab->setDisabled(false);
 }
 
 void MainWindow::about()
 {
   QMessageBox::about(this, tr("About jpgmagick"),
-          tr("jpgmagick manipulates the exif metadata in images.\n\n"
+          tr("jpgmagick convert images with ImageMagick.\n\n"
              "jpgmagick Copyright (C) 2017\n\n"
              "This program comes with ABSOLUTELY NO WARRANTY;\n"
              "This is free software, and you are welcome to redistribute it "
@@ -593,6 +649,8 @@ void MainWindow::about()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+  QFile::remove(_tempFilename);
+
   saveSettings();
 
   QMainWindow::closeEvent(event);

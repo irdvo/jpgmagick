@@ -5,6 +5,8 @@
 #include <QImage>
 #include <QModelIndex>
 
+#include "Magick.h"
+
 class QAction;
 class QListWidget;
 class QMenu;
@@ -47,6 +49,7 @@ private slots:
   void selectPrevImage();
   void selectNextImage();
   void doConvert();
+  void converted();
 
 private:
   void createCentralWidget();
@@ -63,7 +66,8 @@ private:
   void openImage(const QString &filename);
 
   void setImage(const QImage &image);
-  void scaleImage(double factor);
+  void scaleImages(double factor);
+  void sizeImages();
 
   void restoreSettings();
   void saveSettings();
@@ -109,11 +113,15 @@ private:
   QImage            _image;
   double            _scaleFactor;
 
+  QString           _tempFilename;
 
   // Tab
   QTabWidget       *_actionTab;
 
   ContrastBrightnessTab *_contrastBrightnessTab;
+
+  // Magick
+  Magick            _magick;
 };
 
 #endif
