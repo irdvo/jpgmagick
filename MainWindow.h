@@ -36,6 +36,7 @@ protected:
 
 private slots:
   void openDirectory();
+  void saveConverted();
   void parentDirectory();
   void about();
   void zoomIn();
@@ -77,6 +78,9 @@ private:
   void selectFirstImage();
   void selectCurrentImage();
 
+  void clearConvertedImage();
+  void setConvertedImage(const QImage &image);
+
   QMenu            *_fileMenu;
   QMenu            *_imageMenu;
   QMenu            *_windowMenu;
@@ -84,6 +88,7 @@ private:
   QToolBar         *_toolBar;
 
   QAction          *_openDirectoryAction;
+  QAction          *_saveAction;
   QAction          *_parentDirectoryAction;
   QAction          *_quitAction;
   QAction          *_aboutAction;

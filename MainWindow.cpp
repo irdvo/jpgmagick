@@ -119,6 +119,16 @@ void MainWindow::createActions()
   connect(_openDirectoryAction, SIGNAL(triggered()), this, SLOT(openDirectory()));
 #endif
 
+  QIcon saveIcon = style->standardIcon(QStyle::SP_DialogSaveButton);
+  _saveAction = new QAction(saveIcon, tr("&Save converted image..."), this);
+  _saveAction->setStatusTip(tr("Save converted image"));
+  _saveAction->setEnabled(false);
+#if QT_VERSION >= 0x050000
+  connect(_saveAction, &QAction::triggered, this, &MainWindow::saveConverted);
+#else
+  connect(_saveAction, SIGNAL(triggered()), this, SLOT(saveConverted()));
+#endif
+
   QIcon parentDirectoryIcon = style->standardIcon(QStyle::SP_FileDialogToParent);
   _parentDirectoryAction = new QAction(parentDirectoryIcon, tr("&Goto Parent Directory"), this);
   _parentDirectoryAction->setStatusTip(tr("Goto the parent directory"));
@@ -221,6 +231,8 @@ void MainWindow::createMenus()
   _fileMenu = menuBar()->addMenu(tr("&File"));
   _fileMenu->addAction(_openDirectoryAction);
   _fileMenu->addSeparator();
+  _fileMenu->addAction(_saveAction);
+  _fileMenu->addSeparator();
   _fileMenu->addAction(_quitAction);
 
   _imageMenu = menuBar()->addMenu(tr("&Image"));
@@ -248,6 +260,8 @@ void MainWindow::createToolBars()
   _toolBar->addSeparator();
   _toolBar->addAction(_prevImageAction);
   _toolBar->addAction(_nextImageAction);
+  _toolBar->addSeparator();
+  _toolBar->addAction(_saveAction);
 }
 
 void MainWindow::createDirectoryDock()
@@ -319,7 +333,7 @@ void MainWindow::openImage(const QString &filename)
 
   if (image.isNull())
   {
-    QMessageBox::information(
+    QMessageBox::warning(
           this,
           tr("Error: unable to load image"),
           tr("Unable to load the image %1: %2").arg(QDir::toNativeSeparators(filename), reader.errorString()));
@@ -339,7 +353,8 @@ void MainWindow::setImage(const QImage &image)
   _image = image;
 
   _image1Label->setPixmap(QPixmap::fromImage(_image));
-  _image2Label->setPixmap(QPixmap());
+
+  clearConvertedImage();
 
   _scaleFactor = 1.0;
 
@@ -397,14 +412,39 @@ void MainWindow::openDirectory()
 
     _imagePath = directoryDialog.selectedFiles().first();
 
-    //_directoryDock->setWindowTitle(_imagePath);
-
-    //_fileSystemModel->setRootPath(_imagePath);
-
     _directoryView->setRootIndex(_fileSystemModel->setRootPath(_imagePath));
   }
 
   directoryDialog.close();
+}
+
+void MainWindow::saveConverted()
+{
+  QFileDialog saveDialog(this, tr("Save converted image"), _imageFilename);
+
+  saveDialog.setAcceptMode(QFileDialog::AcceptSave);
+  saveDialog.setFileMode  (QFileDialog::AnyFile);
+
+  if (saveDialog.exec() == QDialog::Accepted)
+  {
+    QString newFilename = saveDialog.selectedFiles().first();
+
+    if (QFile::exists(newFilename))
+    {
+      QFile::remove(newFilename);
+    }
+
+    if (!QFile::copy(_tempFilename, newFilename))
+    {
+      QMessageBox::critical(this, tr("Error"), tr("Unable to copy %1 to %2").arg(_tempFilename, newFilename));
+    }
+
+    clearConvertedImage();
+
+    openImage(_imageFilename);
+  }
+
+  saveDialog.close();
 }
 
 void MainWindow::parentDirectory()
@@ -420,11 +460,8 @@ void MainWindow::parentDirectory()
     _imagePath = directory.absolutePath();
 
     _imageFilename = "";
-    _image1Label->setPixmap(QPixmap());
 
-    //_directoryDock->setWindowTitle(tr("Images: %1").arg(_imagePath));
-
-    // TODO _fileSystemModel->setRootPath(_imagePath);
+    clearConvertedImage();
 
     _directoryView->setRootIndex(_fileSystemModel->setRootPath(_imagePath));
   }
@@ -512,11 +549,8 @@ void MainWindow::selectInDirectory(const QModelIndex &index)
     if (_fileSystemModel->fileInfo(index).isDir())
     {
       _imageFilename = "";
-      _image1Label->setPixmap(QPixmap());
 
-      //_directoryDock->setWindowTitle(filename);
-
-      //_fileSystemModel->setRootPath(filename);
+      clearConvertedImage();
 
       _directoryView->setRootIndex(_fileSystemModel->setRootPath(filename));
     }
@@ -593,16 +627,17 @@ void MainWindow::doConvert()
 
   if (contrast == 0 && brightness == 0)
   {
-    _image2Label->setPixmap(QPixmap());
+    clearConvertedImage();
   }
   else
   {
+    _contrastBrightnessTab->setDisabled(true);
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
     QStringList params;
 
     params << "-brightness-contrast" << QString("%1x%2").arg(brightness).arg(contrast) << _imageFilename << _tempFilename;
-
-    _contrastBrightnessTab->setDisabled(true);
-    QApplication::setOverrideCursor(Qt::WaitCursor);
 
     _magick.convert(params);
   }
@@ -620,16 +655,16 @@ void MainWindow::converted()
 
   if (image.isNull())
   {
-    QMessageBox::information(
+    clearConvertedImage();
+
+    QMessageBox::warning(
           this,
           tr("Error: unable to load image"),
-          tr("Unable to load the converted image: %2").arg(reader.errorString()));
+          tr("Unable to load the converted image: %1").arg(reader.errorString()));
   }
   else
   {
-    _image2Label->setPixmap(QPixmap::fromImage(image));
-
-    sizeImages();
+    setConvertedImage(image);
   }
 
   QApplication::restoreOverrideCursor();
@@ -730,6 +765,22 @@ QModelIndex MainWindow::getFirstIndex()
 void MainWindow::selectFirstImage()
 {
   selectInDirectory(getFirstIndex());
+}
+
+void MainWindow::clearConvertedImage()
+{
+  _image2Label->setPixmap(QPixmap());
+
+  _saveAction->setEnabled(false);
+}
+
+void MainWindow::setConvertedImage(const QImage &image)
+{
+  _image2Label->setPixmap(QPixmap::fromImage(image));
+
+  sizeImages();
+
+  _saveAction->setEnabled(true);
 }
 
 // ============================================================================

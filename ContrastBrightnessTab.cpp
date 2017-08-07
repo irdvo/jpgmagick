@@ -31,7 +31,7 @@ ContrastBrightnessTab::ContrastBrightnessTab(QWidget *parent) :
 #if QT_VERSION >= 0x050000
     connect(_convertButton, &QPushButton::clicked, this, &ContrastBrightnessTab::convertClicked);
 #else
-    connect(_convertButton, SIGNAL(triggered()), this, SLOT(doConvert()));
+    connect(_convertButton, SIGNAL(clicked()), this, SLOT(convertClicked()));
 #endif
     layout->addWidget(_convertButton);
 
