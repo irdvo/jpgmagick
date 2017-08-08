@@ -6,6 +6,7 @@
 #endif
 
 #include "MainWindow.h"
+#include "FileView.h"
 #include "ContrastBrightnessTab.h"
 
 MainWindow::MainWindow(int argc, char *argv[]) :
@@ -93,8 +94,10 @@ void MainWindow::createCentralWidget()
       _contrastBrightnessTab = new ContrastBrightnessTab();
 #if QT_VERSION >= 0x050000
         connect(_contrastBrightnessTab, &ContrastBrightnessTab::doConvert, this, &MainWindow::doConvert);
+        connect(_contrastBrightnessTab, &ContrastBrightnessTab::nextImage, this, &MainWindow::selectNextImage);
 #else
         connect(_contrastBrightnessTab, SIGNAL(doConvert()), this, SLOT(doConvert()));
+        connect(_contrastBrightnessTab, SIGNAL(nextImage()), this, SLOT(selectNextImage()));
 #endif
       _actionTab->addTab(_contrastBrightnessTab, tr("Contrast && Brightness"));
 
@@ -286,17 +289,18 @@ void MainWindow::createDirectoryDock()
      connect(_fileSystemModel, SIGNAL(rootPathChanged(const QString&)), this, SLOT(rootPathChanged(const QString&)));
 #endif
 
-     _directoryView = new QListView(_directoryDock);
-    _directoryView->setModel(_fileSystemModel);
-    _directoryView->setRootIndex(_fileSystemModel->index(_imagePath));
+     _directoryView = new FileView(_directoryDock);
+     _directoryView->setModel(_fileSystemModel);
+     _directoryView->setRootIndex(_fileSystemModel->index(_imagePath));
 #if QT_VERSION >= 0x050000
-    connect(_directoryView, &QListView::clicked, this, &MainWindow::selectInDirectory);
+     connect(_directoryView, &QListView::activated, this, &MainWindow::selectInDirectory);
 #else
-    connect(_directoryView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(selectInDirectory(const QModelIndex&)));
+     connect(_directoryView, SIGNAL(activated(const QModelIndex&)), this, SLOT(selectInDirectory(const QModelIndex&)));
+    // or use currentChanged: protected slot
 #endif
 
-    _directoryDock->setWidget(_directoryView);
-    addDockWidget(Qt::LeftDockWidgetArea, _directoryDock);;
+     _directoryDock->setWidget(_directoryView);
+     addDockWidget(Qt::LeftDockWidgetArea, _directoryDock);;
   _windowMenu->addAction(_directoryDock->toggleViewAction());
 }
 
@@ -485,7 +489,7 @@ void MainWindow::setNormalSize()
   double factor = qMin((double) _image1ScrollArea->size().width()  / (double) _image.size().width(),
                        (double) _image1ScrollArea->size().height() / (double) _image.size().height());
 
-  scaleImages(factor * 0.95);
+  scaleImages(factor);
 }
 
 void MainWindow::setFullSize()

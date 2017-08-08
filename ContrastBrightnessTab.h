@@ -19,14 +19,17 @@ public:
 
 signals:
   void doConvert();
+  void nextImage();
   
 private slots:
   void convertClicked();
-  
+  void nextClicked();
+
 private:
   QSpinBox       *_contrastBox;
   QSpinBox       *_brightnessBox;
   QPushButton    *_convertButton;
+  QPushButton    *_nextButton;
 };
 
 #endif // CONTRASTBRIGHTNESSTAB_H

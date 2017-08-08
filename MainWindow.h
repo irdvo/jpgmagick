@@ -15,7 +15,7 @@ class QScrollArea;
 class QFileDialog;
 class QScrollBar;
 class QTableView;
-class QListView;
+class FileView;
 class QFileSystemModel;
 class QDockWidget;
 class QPushButton;
@@ -105,7 +105,7 @@ private:
 
   // Directory dock
   QDockWidget      *_directoryDock;
-  QListView        *_directoryView;
+  FileView         *_directoryView;
   QFileSystemModel *_fileSystemModel;
 
   // Image

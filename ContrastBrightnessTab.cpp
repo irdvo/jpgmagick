@@ -35,6 +35,14 @@ ContrastBrightnessTab::ContrastBrightnessTab(QWidget *parent) :
 #endif
     layout->addWidget(_convertButton);
 
+    _nextButton = new QPushButton(tr(">>"));
+#if QT_VERSION >= 0x050000
+    connect(_nextButton, &QPushButton::clicked, this, &ContrastBrightnessTab::nextClicked);
+#else
+    connect(_nextButton, SIGNAL(clicked()), this, SLOT(nextClicked()));
+#endif
+    layout->addWidget(_nextButton);
+
   layout->addStretch(1);
 
   setLayout(layout);
@@ -55,4 +63,9 @@ void ContrastBrightnessTab::get(int &contrast, int &brightness)
 void ContrastBrightnessTab::convertClicked()
 {
   emit doConvert();
+}
+
+void ContrastBrightnessTab::nextClicked()
+{
+  emit nextImage();
 }
