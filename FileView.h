@@ -11,6 +11,7 @@ public:
   FileView(QWidget *parent = 0);
   
 signals:
+  void indexSelected(const QModelIndex &index);
   
 protected slots:
   void currentChanged(const QModelIndex &current, const QModelIndex &previous);

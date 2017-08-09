@@ -9,5 +9,5 @@ void FileView::currentChanged(const QModelIndex &current, const QModelIndex &pre
 {
   QListView::currentChanged(current, previous);
 
-  /// TODO emit signal
+  emit indexSelected(current);
 }

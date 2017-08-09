@@ -44,13 +44,14 @@ private slots:
   void setNormalSize();
   void setFullSize();
   void fitToWindow();
-  void selectInDirectory(const QModelIndex &);
+  void indexSelected(const QModelIndex &);
+  void indexActivated(const QModelIndex &);
   void directoryLoaded(const QString &);
   void rootPathChanged(const QString &);
-  void selectPrevImage();
-  void selectNextImage();
-  void doConvert();
-  void converted();
+  void moveToPrevImage();
+  void moveToNextImage();
+  void doConvertImage();
+  void imageConverted();
 
 private:
   void createCentralWidget();
@@ -64,9 +65,11 @@ private:
 
   void adjustScrollBar(QScrollBar *scrollBar, double factor);
 
-  void openImage(const QString &filename);
+  void setImage1(const QString &filename);
+  void clearImage1();
+  void clearImage2();
 
-  void setImage(const QImage &image);
+  bool openImage(const QString &filename, QLabel *label, QSize &size);
   void scaleImages(double factor);
   void sizeImages();
 
@@ -75,11 +78,9 @@ private:
 
   QModelIndex getFirstIndex();
   void deselectDirectorySelections();
-  void selectFirstImage();
-  void selectCurrentImage();
-
-  void clearConvertedImage();
-  void setConvertedImage(const QImage &image);
+  void moveToFirstImage();
+  void moveToCurrentImage();
+  void moveToIndex(const QModelIndex &);
 
   QMenu            *_fileMenu;
   QMenu            *_imageMenu;
@@ -114,10 +115,10 @@ private:
   QLabel           *_image2Label;
   QScrollArea      *_image2ScrollArea;
   QString           _imageFilename;
+  QSize             _image1Size;
+  QSize             _image2Size;
   QString           _imagePath;
-  QImage            _image;
   double            _scaleFactor;
-
   QString           _tempFilename;
 
   // Tab

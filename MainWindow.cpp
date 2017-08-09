@@ -10,7 +10,6 @@
 #include "ContrastBrightnessTab.h"
 
 MainWindow::MainWindow(int argc, char *argv[]) :
-  _imageFilename(""),
   _imagePath(QDir::currentPath()),
   _scaleFactor(1.0)
 {
@@ -28,9 +27,9 @@ MainWindow::MainWindow(int argc, char *argv[]) :
   _tempFilename = QString("%1/jpgmagick.jpg").arg(QDir::tempPath());
 
 #if QT_VERSION >= 0x050000
-  connect(&_magick, &Magick::converted, this, &MainWindow::converted);
+  connect(&_magick, &Magick::converted, this, &MainWindow::imageConverted);
 #else
-  connect(&_magick, SIGNAL(converted()), this, SLOT(converted()));
+  connect(&_magick, SIGNAL(converted()), this, SLOT(imageConverted()));
 #endif
 
   createCentralWidget();
@@ -93,11 +92,11 @@ void MainWindow::createCentralWidget()
 
       _contrastBrightnessTab = new ContrastBrightnessTab();
 #if QT_VERSION >= 0x050000
-        connect(_contrastBrightnessTab, &ContrastBrightnessTab::doConvert, this, &MainWindow::doConvert);
-        connect(_contrastBrightnessTab, &ContrastBrightnessTab::nextImage, this, &MainWindow::selectNextImage);
+        connect(_contrastBrightnessTab, &ContrastBrightnessTab::doConvert, this, &MainWindow::doConvertImage);
+        connect(_contrastBrightnessTab, &ContrastBrightnessTab::nextImage, this, &MainWindow::moveToNextImage);
 #else
-        connect(_contrastBrightnessTab, SIGNAL(doConvert()), this, SLOT(doConvert()));
-        connect(_contrastBrightnessTab, SIGNAL(nextImage()), this, SLOT(selectNextImage()));
+        connect(_contrastBrightnessTab, SIGNAL(doConvert()), this, SLOT(doConvertImage()));
+        connect(_contrastBrightnessTab, SIGNAL(nextImage()), this, SLOT(moveToNextImage()));
 #endif
       _actionTab->addTab(_contrastBrightnessTab, tr("Contrast && Brightness"));
 
@@ -199,17 +198,17 @@ void MainWindow::createActions()
   QIcon prevImageIcon = style->standardIcon(QStyle::SP_ArrowBack);
   _prevImageAction = new QAction(prevImageIcon, tr("Show prevous image"), this);
 #if QT_VERSION >= 0x050000
-  connect(_prevImageAction, &QAction::triggered, this, &MainWindow::selectPrevImage);
+  connect(_prevImageAction, &QAction::triggered, this, &MainWindow::moveToPrevImage);
 #else
-  connect(_prevImageAction, SIGNAL(triggered()), this, SLOT(selectPrevImage()));
+  connect(_prevImageAction, SIGNAL(triggered()), this, SLOT(moveToPrevImage()));
 #endif
 
   QIcon nextImageIcon = style->standardIcon(QStyle::SP_ArrowForward);
   _nextImageAction = new QAction(nextImageIcon, tr("Show next image"), this);
 #if QT_VERSION >= 0x050000
-  connect(_nextImageAction, &QAction::triggered, this, &MainWindow::selectNextImage);
+  connect(_nextImageAction, &QAction::triggered, this, &MainWindow::moveToNextImage);
 #else
-  connect(_nextImageAction, SIGNAL(triggered()), this, SLOT(selectNextImage()));
+  connect(_nextImageAction, SIGNAL(triggered()), this, SLOT(moveToNextImage()));
 #endif
 
   _aboutAction = new QAction(tr("&About"), this);
@@ -293,10 +292,11 @@ void MainWindow::createDirectoryDock()
      _directoryView->setModel(_fileSystemModel);
      _directoryView->setRootIndex(_fileSystemModel->index(_imagePath));
 #if QT_VERSION >= 0x050000
-     connect(_directoryView, &QListView::activated, this, &MainWindow::selectInDirectory);
+     connect(_directoryView, &QListView::activated,    this, &MainWindow::indexActivated);
+     connect(_directoryView, &FileView::indexSelected, this, &MainWindow::indexSelected);
 #else
-     connect(_directoryView, SIGNAL(activated(const QModelIndex&)), this, SLOT(selectInDirectory(const QModelIndex&)));
-    // or use currentChanged: protected slot
+     connect(_directoryView, SIGNAL(activated(const QModelIndex&)),     this, SLOT(indexActivated(const QModelIndex&)));
+     connect(_directoryView, SIGNAL(indexSelected(const QModelIndex&)), this, SLOT(indexSelected(const QModelIndex&)));
 #endif
 
      _directoryDock->setWidget(_directoryView);
@@ -306,17 +306,20 @@ void MainWindow::createDirectoryDock()
 
 void MainWindow::updateActions()
 {
-  _zoomInAction       ->setEnabled(!_fitToWindowAction->isChecked());
-  _zoomOutAction      ->setEnabled(!_fitToWindowAction->isChecked());
-  _setNormalSizeAction->setEnabled(!_fitToWindowAction->isChecked());
-  _setFullSizeAction  ->setEnabled(!_fitToWindowAction->isChecked());
+  bool isEnabled = !_imageFilename.isEmpty() && !_fitToWindowAction->isChecked();
+
+  _fitToWindowAction  ->setEnabled(!_imageFilename.isEmpty());
+  _zoomInAction       ->setEnabled(isEnabled);
+  _zoomOutAction      ->setEnabled(isEnabled);
+  _setNormalSizeAction->setEnabled(isEnabled);
+  _setFullSizeAction  ->setEnabled(isEnabled);
 }
 
 void MainWindow::setTitle()
 {
   QString title = "jpgmagick";
 
-  if (_imageFilename.length() > 0)
+  if (!_imageFilename.isEmpty())
   {
     title.append(QString(" - %1 (%2%)").arg(_imageFilename).arg((int) (_scaleFactor * 100.0)));
   }
@@ -325,7 +328,53 @@ void MainWindow::setTitle()
 }
 
 // == Image ===================================================================
-void MainWindow::openImage(const QString &filename)
+void MainWindow::setImage1(const QString &filename)
+{
+  if (openImage(filename, _image1Label, _image1Size))
+  {
+    _imageFilename = filename;
+
+    _scaleFactor = 1.0;
+
+
+    if (!_fitToWindowAction->isChecked())
+    {
+      setNormalSize();
+    }
+  }
+  else
+  {
+    _imageFilename.clear();
+  }
+
+  setTitle();
+
+  updateActions();
+
+  clearImage2();
+}
+
+void MainWindow::clearImage1()
+{
+  _image1Label->setPixmap(QPixmap());
+
+  _imageFilename.clear();
+
+  clearImage2();
+
+  setTitle();
+
+  updateActions();
+}
+
+void MainWindow::clearImage2()
+{
+  _image2Label->setPixmap(QPixmap());
+
+  _saveAction->setEnabled(false);
+}
+
+bool MainWindow::openImage(const QString &filename, QLabel *label, QSize &size)
 {
   QImageReader reader(filename);
 
@@ -344,32 +393,12 @@ void MainWindow::openImage(const QString &filename)
   }
   else
   {
-    _imageFilename = filename;
+    size = image.size();
 
-    setTitle();
-
-    setImage(image);
+    label->setPixmap(QPixmap::fromImage(image));
   }
-}
 
-void MainWindow::setImage(const QImage &image)
-{
-  _image = image;
-
-  _image1Label->setPixmap(QPixmap::fromImage(_image));
-
-  clearConvertedImage();
-
-  _scaleFactor = 1.0;
-
-  _fitToWindowAction->setEnabled(true);
-
-  updateActions();
-
-  if (!_fitToWindowAction->isChecked())
-  {
-    setNormalSize();
-  }
+  return (!image.isNull());
 }
 
 void MainWindow::scaleImages(double factor)
@@ -443,9 +472,7 @@ void MainWindow::saveConverted()
       QMessageBox::critical(this, tr("Error"), tr("Unable to copy %1 to %2").arg(_tempFilename, newFilename));
     }
 
-    clearConvertedImage();
-
-    openImage(_imageFilename);
+    setImage1(_imageFilename);
   }
 
   saveDialog.close();
@@ -463,9 +490,7 @@ void MainWindow::parentDirectory()
 
     _imagePath = directory.absolutePath();
 
-    _imageFilename = "";
-
-    clearConvertedImage();
+    clearImage1();
 
     _directoryView->setRootIndex(_fileSystemModel->setRootPath(_imagePath));
   }
@@ -486,8 +511,8 @@ void MainWindow::setNormalSize()
   _scaleFactor = 1.0;
 
   // Scale the image to fit on screen
-  double factor = qMin((double) _image1ScrollArea->size().width()  / (double) _image.size().width(),
-                       (double) _image1ScrollArea->size().height() / (double) _image.size().height());
+  double factor = qMin((double) _image1ScrollArea->size().width()  / (double) _image1Size.width(),
+                       (double) _image1ScrollArea->size().height() / (double) _image1Size.height());
 
   scaleImages(factor);
 }
@@ -526,13 +551,13 @@ void MainWindow::directoryLoaded(const QString &)
   }
 #endif
 
-  if (_imageFilename == "")
+  if (_imageFilename.isEmpty())
   {
-    selectFirstImage();
+    moveToFirstImage();
   }
   else
   {
-    selectCurrentImage();
+    moveToCurrentImage();
   }
 }
 
@@ -542,7 +567,7 @@ void MainWindow::rootPathChanged(const QString &path)
 }
 
 
-void MainWindow::selectInDirectory(const QModelIndex &index)
+void MainWindow::moveToIndex(const QModelIndex &index)
 {
   if (index != QModelIndex())
   {
@@ -552,9 +577,7 @@ void MainWindow::selectInDirectory(const QModelIndex &index)
 
     if (_fileSystemModel->fileInfo(index).isDir())
     {
-      _imageFilename = "";
-
-      clearConvertedImage();
+      clearImage1();
 
       _directoryView->setRootIndex(_fileSystemModel->setRootPath(filename));
     }
@@ -563,12 +586,48 @@ void MainWindow::selectInDirectory(const QModelIndex &index)
       _directoryView->selectionModel()->select(index, QItemSelectionModel::Select);
       _directoryView->scrollTo(index);
 
-      openImage(filename);
+      setImage1(filename);
     }
   }
 }
 
-void MainWindow::selectPrevImage()
+void MainWindow::indexActivated(const QModelIndex &index)
+{
+  if (index != QModelIndex())
+  {
+    QString filename = _fileSystemModel->fileInfo(index).absoluteFilePath();
+
+    if (_fileSystemModel->fileInfo(index).isDir())
+    {
+      clearImage1();
+
+      _directoryView->setRootIndex(_fileSystemModel->setRootPath(filename));
+    }
+    else if (filename != _imageFilename)
+    {
+      setImage1(filename);
+    }
+  }
+}
+
+void MainWindow::indexSelected(const QModelIndex &index)
+{
+  if (index != QModelIndex())
+  {
+    QString filename = _fileSystemModel->fileInfo(index).absoluteFilePath();
+
+    if (_fileSystemModel->fileInfo(index).isDir())
+    {
+      clearImage1();
+    }
+    else if (filename != _imageFilename)
+    {
+      setImage1(filename);
+    }
+  }
+}
+
+void MainWindow::moveToPrevImage()
 {
   QModelIndexList selectedIndexes =  _directoryView->selectionModel()->selectedIndexes();
 
@@ -587,7 +646,7 @@ void MainWindow::selectPrevImage()
     }
     while ((sibling != QModelIndex()) && (_fileSystemModel->isDir(sibling)));
 
-    selectInDirectory(sibling);
+    moveToIndex(sibling);
   }
   else
   {
@@ -595,7 +654,7 @@ void MainWindow::selectPrevImage()
   }
 }
 
-void MainWindow::selectNextImage()
+void MainWindow::moveToNextImage()
 {
   QModelIndexList selectedIndexes =  _directoryView->selectionModel()->selectedIndexes();
 
@@ -614,7 +673,7 @@ void MainWindow::selectNextImage()
     }
     while ((sibling != QModelIndex()) && (_fileSystemModel->isDir(sibling)));
 
-    selectInDirectory(sibling);
+    moveToIndex(sibling);
   }
   else
   {
@@ -622,7 +681,7 @@ void MainWindow::selectNextImage()
   }
 }
 
-void MainWindow::doConvert()
+void MainWindow::doConvertImage()
 {
   int contrast;
   int brightness;
@@ -631,7 +690,7 @@ void MainWindow::doConvert()
 
   if (contrast == 0 && brightness == 0)
   {
-    clearConvertedImage();
+    clearImage2();
   }
   else
   {
@@ -647,34 +706,24 @@ void MainWindow::doConvert()
   }
 }
 
-void MainWindow::converted()
+void MainWindow::imageConverted()
 {
-  QImageReader reader(_tempFilename);
-
-#if QT_VERSION >= 0x050500
-  reader.setAutoTransform(true);
-#endif
-
-  const QImage image = reader.read();
-
-  if (image.isNull())
+  if (openImage(_tempFilename, _image2Label, _image2Size))
   {
-    clearConvertedImage();
+    sizeImages();
 
-    QMessageBox::warning(
-          this,
-          tr("Error: unable to load image"),
-          tr("Unable to load the converted image: %1").arg(reader.errorString()));
+    _saveAction->setEnabled(true);
   }
   else
   {
-    setConvertedImage(image);
+    clearImage2();
   }
 
   QApplication::restoreOverrideCursor();
 
   _contrastBrightnessTab->setDisabled(false);
 }
+
 
 void MainWindow::about()
 {
@@ -724,7 +773,7 @@ void MainWindow::deselectDirectorySelections()
   }
 }
 
-void MainWindow::selectCurrentImage()
+void MainWindow::moveToCurrentImage()
 {
   int col = _directoryView->modelColumn();
   int row = 0;
@@ -745,7 +794,7 @@ void MainWindow::selectCurrentImage()
   }
   else
   {
-    selectFirstImage();
+    moveToFirstImage();
   }
 }
 
@@ -766,25 +815,9 @@ QModelIndex MainWindow::getFirstIndex()
   return sibling;
 }
 
-void MainWindow::selectFirstImage()
+void MainWindow::moveToFirstImage()
 {
-  selectInDirectory(getFirstIndex());
-}
-
-void MainWindow::clearConvertedImage()
-{
-  _image2Label->setPixmap(QPixmap());
-
-  _saveAction->setEnabled(false);
-}
-
-void MainWindow::setConvertedImage(const QImage &image)
-{
-  _image2Label->setPixmap(QPixmap::fromImage(image));
-
-  sizeImages();
-
-  _saveAction->setEnabled(true);
+  moveToIndex(getFirstIndex());
 }
 
 // ============================================================================
