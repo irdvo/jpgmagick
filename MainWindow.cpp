@@ -54,39 +54,20 @@ void MainWindow::createCentralWidget()
 {
   QVBoxLayout *vbox = new QVBoxLayout;
 
-    QHBoxLayout *hbox = new QHBoxLayout;
+    _imageLabel = new QLabel;
+      _imageLabel->setBackgroundRole(QPalette::Base);
+      _imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+      _imageLabel->setScaledContents(true);
+      _imageLabel->setAlignment(Qt::AlignCenter);
+      _imageLabel->setPixmap(QPixmap());
 
-      _image1Label = new QLabel;
-        _image1Label->setBackgroundRole(QPalette::Base);
-        _image1Label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
-        _image1Label->setScaledContents(true);
-        _image1Label->setAlignment(Qt::AlignCenter);
-        _image1Label->setPixmap(QPixmap());
+    _imageScrollArea = new QScrollArea;
+      _imageScrollArea->setBackgroundRole(QPalette::Base);
+      _imageScrollArea->setWidget(_imageLabel);
+      _imageScrollArea->setVisible(true);
+      _imageScrollArea->setAlignment(Qt::AlignCenter);
 
-      _image1ScrollArea = new QScrollArea;
-        _image1ScrollArea->setBackgroundRole(QPalette::Base);
-        _image1ScrollArea->setWidget(_image1Label);
-        _image1ScrollArea->setVisible(true);
-        _image1ScrollArea->setAlignment(Qt::AlignCenter);
-
-      hbox->addWidget(_image1ScrollArea);
-
-      _image2Label = new QLabel;
-        _image2Label->setBackgroundRole(QPalette::Base);
-        _image2Label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
-        _image2Label->setScaledContents(true);
-        _image2Label->setAlignment(Qt::AlignCenter);
-        _image2Label->setPixmap(QPixmap());
-
-      _image2ScrollArea = new QScrollArea;
-        _image2ScrollArea->setBackgroundRole(QPalette::Base);
-        _image2ScrollArea->setWidget(_image2Label);
-        _image2ScrollArea->setVisible(true);
-        _image2ScrollArea->setAlignment(Qt::AlignCenter);
-
-      hbox->addWidget(_image2ScrollArea);
-
-    vbox->addLayout(hbox, 1);
+    vbox->addWidget(_imageScrollArea, 1);
 
     _actionTab = new QTabWidget;
 
@@ -330,8 +311,10 @@ void MainWindow::setTitle()
 // == Image ===================================================================
 void MainWindow::setImage1(const QString &filename)
 {
-  if (openImage(filename, _image1Label, _image1Size))
+  if (openImage2(filename, _image1))
   {
+    drawImages(_imageLabel, _image1, _image2);
+
     _imageFilename = filename;
 
     _scaleFactor = 1.0;
@@ -356,7 +339,9 @@ void MainWindow::setImage1(const QString &filename)
 
 void MainWindow::clearImage1()
 {
-  _image1Label->setPixmap(QPixmap());
+  _image1 = QImage();
+
+  _imageLabel->setPixmap(QPixmap());
 
   _imageFilename.clear();
 
@@ -369,12 +354,14 @@ void MainWindow::clearImage1()
 
 void MainWindow::clearImage2()
 {
-  _image2Label->setPixmap(QPixmap());
+  _image2 = QImage();
+
+  drawImages(_imageLabel, _image1, _image2);
 
   _saveAction->setEnabled(false);
 }
 
-bool MainWindow::openImage(const QString &filename, QLabel *label, QSize &size)
+bool MainWindow::openImage(const QString &filename, QLabel *label, QImage &image)
 {
   QImageReader reader(filename);
 
@@ -382,7 +369,7 @@ bool MainWindow::openImage(const QString &filename, QLabel *label, QSize &size)
   reader.setAutoTransform(true);
 #endif
 
-  const QImage image = reader.read();
+  image = reader.read();
 
   if (image.isNull())
   {
@@ -393,12 +380,58 @@ bool MainWindow::openImage(const QString &filename, QLabel *label, QSize &size)
   }
   else
   {
-    size = image.size();
-
     label->setPixmap(QPixmap::fromImage(image));
   }
 
   return (!image.isNull());
+}
+
+bool MainWindow::openImage2(const QString &filename, QImage &image)
+{
+  QImageReader reader(filename);
+
+#if QT_VERSION >= 0x050500
+  reader.setAutoTransform(true);
+#endif
+
+  image = reader.read();
+
+  if (image.isNull())
+  {
+    QMessageBox::warning(
+          this,
+          tr("Error: unable to load image"),
+          tr("Unable to load the image %1: %2").arg(QDir::toNativeSeparators(filename), reader.errorString()));
+  }
+
+  return (!image.isNull());
+}
+
+void MainWindow::drawImages(QLabel *label, const QImage &image1, const QImage &image2)
+{
+  QPixmap pixmap(image1.size());
+
+  {
+    QPainter painter(&pixmap);
+
+    if (!image1.isNull())
+    {
+      if (image2.isNull())
+      {
+        painter.drawImage(0, 0, image1);
+      }
+      else
+      {
+        int w = image1.size().width();
+        int h = image2.size().height();
+
+        painter.drawImage(QPoint(0,0), image1, QRect(0, 0, w/2, h));
+        painter.drawImage(QPoint(w/2,0), image2, QRect(w/2, 0, w/2, h));
+      }
+    }
+  }
+
+  label->setPixmap(pixmap);
 }
 
 void MainWindow::scaleImages(double factor)
@@ -407,10 +440,8 @@ void MainWindow::scaleImages(double factor)
 
   sizeImages();
 
-  adjustScrollBar(_image1ScrollArea->horizontalScrollBar(), factor);
-  adjustScrollBar(_image1ScrollArea->verticalScrollBar(),   factor);
-  adjustScrollBar(_image2ScrollArea->horizontalScrollBar(), factor);
-  adjustScrollBar(_image2ScrollArea->verticalScrollBar(),   factor);
+  adjustScrollBar(_imageScrollArea->horizontalScrollBar(), factor);
+  adjustScrollBar(_imageScrollArea->verticalScrollBar(),   factor);
 
   _zoomInAction ->setEnabled(_scaleFactor < 2.0);
   _zoomOutAction->setEnabled(_scaleFactor > 0.1);
@@ -420,8 +451,7 @@ void MainWindow::scaleImages(double factor)
 
 void MainWindow::sizeImages()
 {
-  _image1Label->resize(_scaleFactor * _image1Label->pixmap()->size());
-  _image2Label->resize(_scaleFactor * _image2Label->pixmap()->size());
+  _imageLabel->resize(_scaleFactor * _imageLabel->pixmap()->size());
 }
 
 void MainWindow::adjustScrollBar(QScrollBar *scrollBar, double factor)
@@ -511,8 +541,8 @@ void MainWindow::setNormalSize()
   _scaleFactor = 1.0;
 
   // Scale the image to fit on screen
-  double factor = qMin((double) _image1ScrollArea->size().width()  / (double) _image1Size.width(),
-                       (double) _image1ScrollArea->size().height() / (double) _image1Size.height());
+  double factor = qMin(double(_imageScrollArea->size().width())  / double(_image1.size().width()),
+                       double(_imageScrollArea->size().height()) / double(_image1.size().height()));
 
   scaleImages(factor);
 }
@@ -521,16 +551,14 @@ void MainWindow::setFullSize()
 {
   _scaleFactor = 1.0;
 
-  _image1Label->adjustSize();
-  _image2Label->adjustSize();
+  _imageLabel->adjustSize();
 }
 
 void MainWindow::fitToWindow()
 {
   bool fitToWindow = _fitToWindowAction->isChecked();
 
-  _image1ScrollArea->setWidgetResizable(fitToWindow);
-  _image2ScrollArea->setWidgetResizable(fitToWindow);
+  _imageScrollArea->setWidgetResizable(fitToWindow);
 
   if (!fitToWindow)
   {
@@ -650,7 +678,7 @@ void MainWindow::moveToPrevImage()
   }
   else
   {
-    QMessageBox::warning(0, tr("Warning"), tr("No selected image"));
+    QMessageBox::warning(this, tr("Warning"), tr("No selected image"));
   }
 }
 
@@ -677,7 +705,7 @@ void MainWindow::moveToNextImage()
   }
   else
   {
-    QMessageBox::warning(0, tr("Warning"), tr("No selected image"));
+    QMessageBox::warning(this, tr("Warning"), tr("No selected image"));
   }
 }
 
@@ -708,8 +736,10 @@ void MainWindow::doConvertImage()
 
 void MainWindow::imageConverted()
 {
-  if (openImage(_tempFilename, _image2Label, _image2Size))
+  if (openImage2(_tempFilename, _image2))
   {
+    drawImages(_imageLabel, _image1, _image2);
+
     sizeImages();
 
     _saveAction->setEnabled(true);

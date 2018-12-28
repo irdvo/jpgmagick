@@ -69,9 +69,13 @@ private:
   void clearImage1();
   void clearImage2();
 
-  bool openImage(const QString &filename, QLabel *label, QSize &size);
+  bool openImage(const QString &filename, QLabel *label, QImage &image);
+  bool openImage2(const QString &filename, QImage &image);
+
   void scaleImages(double factor);
   void sizeImages();
+
+  void drawImages(QLabel *label, const QImage &image1, const QImage &image2);
 
   void restoreSettings();
   void saveSettings();
@@ -110,13 +114,11 @@ private:
   QFileSystemModel *_fileSystemModel;
 
   // Image
-  QLabel           *_image1Label;
-  QScrollArea      *_image1ScrollArea;
-  QLabel           *_image2Label;
-  QScrollArea      *_image2ScrollArea;
+  QLabel           *_imageLabel;
+  QScrollArea      *_imageScrollArea;
   QString           _imageFilename;
-  QSize             _image1Size;
-  QSize             _image2Size;
+  QImage            _image1;
+  QImage            _image2;
   QString           _imagePath;
   double            _scaleFactor;
   QString           _tempFilename;
