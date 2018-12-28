@@ -54,7 +54,7 @@ void MainWindow::createCentralWidget()
 {
   QVBoxLayout *vbox = new QVBoxLayout;
 
-    QHBoxLayout *hbox = new QHBoxLayout;
+    QSplitter *splitter = new QSplitter(this);
 
       _image1Label = new QLabel;
         _image1Label->setBackgroundRole(QPalette::Base);
@@ -69,7 +69,7 @@ void MainWindow::createCentralWidget()
         _image1ScrollArea->setVisible(true);
         _image1ScrollArea->setAlignment(Qt::AlignCenter);
 
-      hbox->addWidget(_image1ScrollArea);
+      splitter->addWidget(_image1ScrollArea);
 
       _image2Label = new QLabel;
         _image2Label->setBackgroundRole(QPalette::Base);
@@ -84,9 +84,9 @@ void MainWindow::createCentralWidget()
         _image2ScrollArea->setVisible(true);
         _image2ScrollArea->setAlignment(Qt::AlignCenter);
 
-      hbox->addWidget(_image2ScrollArea);
+      splitter->addWidget(_image2ScrollArea);
 
-    vbox->addLayout(hbox, 1);
+    vbox->addWidget(splitter, 1);
 
     _actionTab = new QTabWidget;
 
