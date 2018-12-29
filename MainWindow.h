@@ -37,6 +37,7 @@ protected:
 private slots:
   void openDirectory();
   void saveConverted();
+  void overwriteByConverted();
   void parentDirectory();
   void about();
   void zoomIn();
@@ -73,6 +74,8 @@ private:
   void scaleImages(double factor);
   void sizeImages();
 
+  void doSaveConverted(const QString &savename);
+
   void restoreSettings();
   void saveSettings();
 
@@ -90,6 +93,7 @@ private:
 
   QAction          *_openDirectoryAction;
   QAction          *_saveAction;
+  QAction          *_overwriteAction;
   QAction          *_parentDirectoryAction;
   QAction          *_quitAction;
   QAction          *_aboutAction;

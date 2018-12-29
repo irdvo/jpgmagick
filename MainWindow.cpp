@@ -114,7 +114,7 @@ void MainWindow::createActions()
 
   QIcon openDirectoryIcon = style->standardIcon(QStyle::SP_DirOpenIcon);
   _openDirectoryAction = new QAction(openDirectoryIcon, tr("&Open Directory..."), this);
-  _openDirectoryAction->setStatusTip(tr("Open a directory with image files"));
+  _openDirectoryAction->setToolTip(tr("Open a directory with image files"));
 #if QT_VERSION >= 0x050000
   connect(_openDirectoryAction, &QAction::triggered, this, &MainWindow::openDirectory);
 #else
@@ -123,7 +123,7 @@ void MainWindow::createActions()
 
   QIcon saveIcon = style->standardIcon(QStyle::SP_DialogSaveButton);
   _saveAction = new QAction(saveIcon, tr("&Save converted image..."), this);
-  _saveAction->setStatusTip(tr("Save converted image"));
+  _saveAction->setToolTip(tr("Save converted image"));
   _saveAction->setEnabled(false);
 #if QT_VERSION >= 0x050000
   connect(_saveAction, &QAction::triggered, this, &MainWindow::saveConverted);
@@ -131,9 +131,19 @@ void MainWindow::createActions()
   connect(_saveAction, SIGNAL(triggered()), this, SLOT(saveConverted()));
 #endif
 
+  QIcon overwriteIcon = style->standardIcon(QStyle::SP_MessageBoxWarning);
+  _overwriteAction = new QAction(overwriteIcon, tr("&Overwrite with converted image"), this);
+  _overwriteAction->setToolTip(tr("Overwrite existing image with converted image"));
+  _overwriteAction->setEnabled(false);
+#if QT_VERSION >= 0x050000
+  connect(_overwriteAction, &QAction::triggered, this, &MainWindow::overwriteByConverted);
+#else
+  connect(_overwriteAction, SIGNAL(triggered()), this, SLOT(overwriteByConverted()));
+#endif
+
   QIcon parentDirectoryIcon = style->standardIcon(QStyle::SP_FileDialogToParent);
   _parentDirectoryAction = new QAction(parentDirectoryIcon, tr("&Goto Parent Directory"), this);
-  _parentDirectoryAction->setStatusTip(tr("Goto the parent directory"));
+  _parentDirectoryAction->setToolTip(tr("Goto the parent directory"));
 #if QT_VERSION >= 0x050000
   connect(_parentDirectoryAction, &QAction::triggered, this, &MainWindow::parentDirectory);
 #else
@@ -142,7 +152,7 @@ void MainWindow::createActions()
 
   _quitAction = new QAction(tr("&Quit"), this);
   _quitAction->setShortcuts(QKeySequence::Quit);
-  _quitAction->setStatusTip(tr("Quit the application"));
+  _quitAction->setToolTip(tr("Quit the application"));
 #if QT_VERSION >= 0x050000
   connect(_quitAction, &QAction::triggered, this, &MainWindow::close);
 #else
@@ -212,7 +222,7 @@ void MainWindow::createActions()
 #endif
 
   _aboutAction = new QAction(tr("&About"), this);
-  _aboutAction->setStatusTip(tr("Show the application's About box"));
+  _aboutAction->setToolTip(tr("Show the application's About box"));
 #if QT_VERSION >= 0x050000
   connect(_aboutAction, &QAction::triggered, this, &MainWindow::about);
 #else
@@ -220,7 +230,7 @@ void MainWindow::createActions()
 #endif
 
   _aboutQtAction = new QAction(tr("About &Qt"), this);
-  _aboutQtAction->setStatusTip(tr("Show the Qt library's About box"));
+  _aboutQtAction->setToolTip(tr("Show the Qt library's About box"));
 #if QT_VERSION >= 0x050000
   connect(_aboutQtAction, &QAction::triggered, this, &QApplication::aboutQt);
 #else
@@ -234,6 +244,7 @@ void MainWindow::createMenus()
   _fileMenu->addAction(_openDirectoryAction);
   _fileMenu->addSeparator();
   _fileMenu->addAction(_saveAction);
+  _fileMenu->addAction(_overwriteAction);
   _fileMenu->addSeparator();
   _fileMenu->addAction(_quitAction);
 
@@ -264,6 +275,7 @@ void MainWindow::createToolBars()
   _toolBar->addAction(_nextImageAction);
   _toolBar->addSeparator();
   _toolBar->addAction(_saveAction);
+  _toolBar->addAction(_overwriteAction);
 }
 
 void MainWindow::createDirectoryDock()
@@ -372,6 +384,7 @@ void MainWindow::clearImage2()
   _image2Label->setPixmap(QPixmap());
 
   _saveAction->setEnabled(false);
+  _overwriteAction->setEnabled(false);
 }
 
 bool MainWindow::openImage(const QString &filename, QLabel *label, QSize &size)
@@ -451,6 +464,39 @@ void MainWindow::openDirectory()
   directoryDialog.close();
 }
 
+void MainWindow::doSaveConverted(const QString &savename)
+{
+  QString backupFilename;
+
+  if (QFile::exists(savename))
+  {
+    backupFilename = QString("%1/%2").arg(QDir::tempPath(), QFileInfo(savename).fileName());
+
+    if (!QFile::copy(savename, backupFilename))
+    {
+      QMessageBox::critical(this, tr("Error"), tr("Unable to backup %1 to %2, saving aborted").arg(savename, backupFilename));
+      return;
+    }
+
+    QFile::remove(savename);
+  }
+
+  if (!QFile::copy(_tempFilename, savename))
+  {
+    QMessageBox::critical(this, tr("Error"), tr("Unable to copy %1 to %2").arg(_tempFilename, savename));
+
+    if ((!backupFilename.isEmpty()) && (!QFile::copy(backupFilename, savename)))
+    {
+      QMessageBox::critical(this, tr("Error"), tr("Unable to restore backup %1 to %2").arg(backupFilename, savename));
+      return;
+    }
+  }
+  else if (!backupFilename.isEmpty())
+  {
+    QFile::remove(backupFilename);
+  }
+}
+
 void MainWindow::saveConverted()
 {
   QFileDialog saveDialog(this, tr("Save converted image"), _imageFilename);
@@ -462,20 +508,19 @@ void MainWindow::saveConverted()
   {
     QString newFilename = saveDialog.selectedFiles().first();
 
-    if (QFile::exists(newFilename))
-    {
-      QFile::remove(newFilename);
-    }
-
-    if (!QFile::copy(_tempFilename, newFilename))
-    {
-      QMessageBox::critical(this, tr("Error"), tr("Unable to copy %1 to %2").arg(_tempFilename, newFilename));
-    }
+    doSaveConverted(newFilename);
 
     setImage1(_imageFilename);
   }
 
   saveDialog.close();
+}
+
+void MainWindow::overwriteByConverted()
+{
+  doSaveConverted(_imageFilename);
+
+  setImage1(_imageFilename);
 }
 
 void MainWindow::parentDirectory()
@@ -713,6 +758,7 @@ void MainWindow::imageConverted()
     sizeImages();
 
     _saveAction->setEnabled(true);
+    _overwriteAction->setEnabled(true);
   }
   else
   {
