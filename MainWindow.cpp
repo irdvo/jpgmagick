@@ -95,6 +95,41 @@ QHBoxLayout *MainWindow::createTabToolbar()
   return toolbar;
 }
 
+QHBoxLayout *MainWindow::createDirToolbar()
+{
+  int size = qApp->style()->pixelMetric(QStyle::PM_ToolBarIconSize);
+
+  QSize iconSize(size, size);
+
+  QHBoxLayout *toolbar = new QHBoxLayout;
+
+    QToolButton *button = new QToolButton();
+      button->setIconSize(iconSize);
+      button->setDefaultAction(_openDirectoryAction);
+    toolbar->addWidget(button);
+
+    button = new QToolButton();
+      button->setIconSize(iconSize);
+      button->setDefaultAction(_parentDirectoryAction);
+    toolbar->addWidget(button);
+
+    toolbar->addWidget(createSeparator());
+
+    button = new QToolButton();
+      button->setIconSize(iconSize);
+      button->setDefaultAction(_prevImageAction);
+    toolbar->addWidget(button);
+
+    button = new QToolButton();
+      button->setIconSize(iconSize);
+      button->setDefaultAction(_nextImageAction);
+    toolbar->addWidget(button);
+
+    toolbar->addStretch(1);
+
+  return toolbar;
+}
+
 void MainWindow::createCentralWidget()
 {
   QVBoxLayout *vbox = new QVBoxLayout;
@@ -312,14 +347,6 @@ void MainWindow::createMenus()
 
 void MainWindow::createToolBars()
 {
-  _toolBar = addToolBar("");
-  _toolBar->setObjectName("ToolBar");
-  _toolBar->addAction(_openDirectoryAction);
-  _toolBar->addAction(_parentDirectoryAction);
-  _toolBar->addSeparator();
-  _toolBar->addAction(_prevImageAction);
-  _toolBar->addAction(_nextImageAction);
-  _toolBar->addSeparator();
 }
 
 void MainWindow::createDirectoryDock()
@@ -344,18 +371,27 @@ void MainWindow::createDirectoryDock()
      connect(_fileSystemModel, SIGNAL(rootPathChanged(const QString&)), this, SLOT(rootPathChanged(const QString&)));
 #endif
 
-     _directoryView = new FileView(_directoryDock);
-     _directoryView->setModel(_fileSystemModel);
-     _directoryView->setRootIndex(_fileSystemModel->index(_imagePath));
+     QVBoxLayout *vbox = new QVBoxLayout;
+
+     vbox->addLayout(createDirToolbar());
+
+       _directoryView = new FileView(_directoryDock);
+       _directoryView->setModel(_fileSystemModel);
+       _directoryView->setRootIndex(_fileSystemModel->index(_imagePath));
 #if QT_VERSION >= 0x050000
-     connect(_directoryView, &QListView::activated,    this, &MainWindow::indexActivated);
-     connect(_directoryView, &FileView::indexSelected, this, &MainWindow::indexSelected);
+       connect(_directoryView, &QListView::activated,    this, &MainWindow::indexActivated);
+       connect(_directoryView, &FileView::indexSelected, this, &MainWindow::indexSelected);
 #else
-     connect(_directoryView, SIGNAL(activated(const QModelIndex&)),     this, SLOT(indexActivated(const QModelIndex&)));
-     connect(_directoryView, SIGNAL(indexSelected(const QModelIndex&)), this, SLOT(indexSelected(const QModelIndex&)));
+       connect(_directoryView, SIGNAL(activated(const QModelIndex&)),     this, SLOT(indexActivated(const QModelIndex&)));
+       connect(_directoryView, SIGNAL(indexSelected(const QModelIndex&)), this, SLOT(indexSelected(const QModelIndex&)));
 #endif
 
-     _directoryDock->setWidget(_directoryView);
+     vbox->addWidget(_directoryView, 1);
+
+     QWidget *widget = new QWidget(this);
+     widget->setLayout(vbox);
+
+     _directoryDock->setWidget(widget);
      addDockWidget(Qt::LeftDockWidgetArea, _directoryDock);;
   _windowMenu->addAction(_directoryDock->toggleViewAction());
 }

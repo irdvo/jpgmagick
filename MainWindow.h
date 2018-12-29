@@ -59,6 +59,7 @@ private slots:
 private:
   QFrame *createSeparator();
   QHBoxLayout *createTabToolbar();
+  QHBoxLayout *createDirToolbar();
 
   void createCentralWidget();
   void createActions();
@@ -137,8 +138,6 @@ private:
 
   // Magick
   Magick            _magick;
-
-
 };
 
 #endif
