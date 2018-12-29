@@ -20,6 +20,8 @@ class QFileSystemModel;
 class QDockWidget;
 class QPushButton;
 class QTabWidget;
+class QHBoxLayout;
+class QFrame;
 
 class ContrastBrightnessTab;
 
@@ -55,6 +57,9 @@ private slots:
   void imageConverted();
 
 private:
+  QFrame *createSeparator();
+  QHBoxLayout *createTabToolbar();
+
   void createCentralWidget();
   void createActions();
   void createMenus();
@@ -132,6 +137,8 @@ private:
 
   // Magick
   Magick            _magick;
+
+
 };
 
 #endif

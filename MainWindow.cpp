@@ -32,8 +32,8 @@ MainWindow::MainWindow(int argc, char *argv[]) :
   connect(&_magick, SIGNAL(converted()), this, SLOT(imageConverted()));
 #endif
 
-  createCentralWidget();
   createActions();
+  createCentralWidget();
   createMenus();
   createToolBars();
   createDirectoryDock();
@@ -50,6 +50,51 @@ MainWindow::~MainWindow()
 }
 
 // == GUI =====================================================================
+QFrame *MainWindow::createSeparator()
+{
+  QFrame *line = new QFrame();
+  line->setFrameShape(QFrame::VLine);
+  line->setFrameShadow(QFrame::Sunken);
+  line->setLineWidth(1);
+
+  return line;
+}
+
+QHBoxLayout *MainWindow::createTabToolbar()
+{
+  int size = qApp->style()->pixelMetric(QStyle::PM_ToolBarIconSize);
+
+  QSize iconSize(size, size);
+
+  QHBoxLayout *toolbar = new QHBoxLayout;
+
+    QToolButton *button = new QToolButton();
+      button->setIconSize(iconSize);
+      button->setDefaultAction(_overwriteAction);
+    toolbar->addWidget(button);
+
+    button = new QToolButton();
+      button->setIconSize(iconSize);
+      button->setDefaultAction(_saveAction);
+    toolbar->addWidget(button);
+
+    toolbar->addWidget(createSeparator());
+
+    button = new QToolButton();
+      button->setIconSize(iconSize);
+      button->setDefaultAction(_prevImageAction);
+    toolbar->addWidget(button);
+
+    button = new QToolButton();
+      button->setIconSize(iconSize);
+      button->setDefaultAction(_nextImageAction);
+    toolbar->addWidget(button);
+
+    toolbar->addStretch(1);
+
+  return toolbar;
+}
+
 void MainWindow::createCentralWidget()
 {
   QVBoxLayout *vbox = new QVBoxLayout;
@@ -87,6 +132,7 @@ void MainWindow::createCentralWidget()
       splitter->addWidget(_image2ScrollArea);
 
     vbox->addWidget(splitter, 1);
+    vbox->addLayout(createTabToolbar());
 
     _actionTab = new QTabWidget;
 
@@ -274,8 +320,6 @@ void MainWindow::createToolBars()
   _toolBar->addAction(_prevImageAction);
   _toolBar->addAction(_nextImageAction);
   _toolBar->addSeparator();
-  _toolBar->addAction(_saveAction);
-  _toolBar->addAction(_overwriteAction);
 }
 
 void MainWindow::createDirectoryDock()
